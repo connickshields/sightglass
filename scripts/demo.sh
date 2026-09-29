@@ -24,7 +24,7 @@ cat > "$dir/config.json" <<JSON
       "id": "5D7A4C1E-0000-4000-8000-000000000001",
       "name": "Demo download",
       "path": "$dir/status.json",
-      "staleAfter": 30,
+      "staleAfter": 60,
       "fields": [
         { "id": "5D7A4C1E-0000-4000-8000-000000000011", "path": "status",
           "display": { "badge": { "rules": [
@@ -44,7 +44,7 @@ cat > "$dir/config.json" <<JSON
       "id": "5D7A4C1E-0000-4000-8000-000000000002",
       "name": "Demo log",
       "path": "$dir/events.ndjson",
-      "staleAfter": 30,
+      "staleAfter": 60,
       "fields": [
         { "id": "5D7A4C1E-0000-4000-8000-000000000021", "path": "progress.downloaded",
           "display": { "ring": { "source": { "ratio": { "total": "progress.total" } }, "showsPercent": true } },

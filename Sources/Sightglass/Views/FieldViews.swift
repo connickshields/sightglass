@@ -23,7 +23,7 @@ struct CompactFieldView: View {
     var body: some View {
         HStack(spacing: 3) {
             if let label = field.label, !label.isEmpty {
-                Text(label).foregroundStyle(.secondary)
+                Text(label).foregroundStyle(.secondary).lineLimit(1).truncationMode(.tail)
             }
             content
         }
@@ -32,7 +32,7 @@ struct CompactFieldView: View {
     @ViewBuilder private var content: some View {
         switch state {
         case .text(let text):
-            Text(text)
+            Text(text).lineLimit(1).truncationMode(.tail).frame(maxWidth: 160)
         case .progress(let info):
             switch field.display {
             case .bar(_, let showsPercent):
