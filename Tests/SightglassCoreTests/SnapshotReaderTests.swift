@@ -148,4 +148,22 @@ struct SnapshotReaderTests {
         try url.overwrite("{\"n\": 1}\r\n{\"n\": 2}\r\n")
         #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(2), format: .ndjson, seed: [obj(1)])))
     }
+
+    @Test func refilledLogLongerThanBeforeIsRestart() throws {
+        let (url, reader) = try setUp("events.ndjson")
+        try url.overwrite(line(1) + line(2))
+        _ = reader.read(now: t0)
+        try url.overwrite(line(7) + line(8) + line(9))
+        #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(9), format: .ndjson, seed: [obj(7), obj(8)], isRestart: true)))
+    }
+
+    @Test func recreatedDocumentIsRestart() throws {
+        let (url, reader) = try setUp()
+        try url.overwrite(#"{"n": 1}"#)
+        _ = reader.read(now: t0)
+        try FileManager.default.removeItem(at: url)
+        #expect(reader.read(now: t0) == .missing)
+        try url.overwrite(#"{"n": 2}"#)
+        #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(2), format: .document, isRestart: true)))
+    }
 }

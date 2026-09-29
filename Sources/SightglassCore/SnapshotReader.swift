@@ -10,7 +10,7 @@ public struct Snapshot: Equatable, Sendable {
     public var format: FileFormat
     /// Earlier NDJSON lines (oldest first) from a full read, for seeding history.
     public var seed: [JSONValue]
-    /// True when an NDJSON log was truncated, replaced, or recreated, so
+    /// True when the file was truncated, replaced, or deleted and recreated, so
     /// history from before no longer applies.
     public var isRestart: Bool
 
@@ -43,6 +43,7 @@ public final class SnapshotReader {
     private var format: FileFormat?
     private var inode: UInt64?
     private var offset: UInt64 = 0
+    private var signature = Data()
     private var partialLine = Data()
     private var failingSince: Date?
     private var restartPending = false
@@ -75,9 +76,21 @@ public final class SnapshotReader {
 
         do {
             if format == .ndjson, inode == fileInode, size >= offset {
+                // Check if signature matches to detect truncate+refill on same inode
+                if !signature.isEmpty {
+                    let signatureStart = max(0, offset - UInt64(signature.count))
+                    try handle.seek(toOffset: signatureStart)
+                    let checkData = try handle.read(upToCount: signature.count) ?? Data()
+                    if checkData != signature {
+                        restartPending = true
+                        try handle.seek(toOffset: 0)
+                        return try fullRead(handle, inode: fileInode, size: size, now: now)
+                    }
+                }
                 return try tail(handle, size: size)
             }
             if format == .ndjson { restartPending = true }
+            try handle.seek(toOffset: 0)
             return try fullRead(handle, inode: fileInode, size: size, now: now)
         } catch {
             return fail("Can't read file: \(error.localizedDescription)", now: now)
@@ -91,6 +104,7 @@ public final class SnapshotReader {
         try handle.seek(toOffset: offset)
         let data = try handle.read(upToCount: Int(size - offset)) ?? Data()
         offset += UInt64(data.count)
+        setSignature(data: partialLine + data)
         let (lines, rest) = Self.splitLines(partialLine + data)
         partialLine = rest
         // Once a file is known to be NDJSON, bad lines are skipped.
@@ -138,6 +152,7 @@ public final class SnapshotReader {
         format = .ndjson
         inode = fileInode
         offset = end
+        setSignature(data: data)
         partialLine = rest
         return succeed(Snapshot(value: values[values.count - 1], format: .ndjson, seed: Array(values.dropLast())))
     }
@@ -162,7 +177,18 @@ public final class SnapshotReader {
         format = nil
         inode = nil
         offset = 0
+        signature = Data()
         partialLine = Data()
+    }
+
+    /// Sets signature to the last up to 64 bytes of the data.
+    private func setSignature(data: Data) {
+        let maxSigSize = 64
+        if data.count >= maxSigSize {
+            signature = Data(data[(data.count - maxSigSize)...])
+        } else {
+            signature = data
+        }
     }
 
     // MARK: - Parsing
