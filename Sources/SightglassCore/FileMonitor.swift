@@ -57,6 +57,7 @@ public final class FileMonitor: @unchecked Sendable {
 
     public func start() {
         queue.async { [self] in
+            guard timer == nil else { return }
             check()
             let timer = DispatchSource.makeTimerSource(queue: queue)
             timer.schedule(deadline: .now() + pollInterval, repeating: pollInterval, leeway: .milliseconds(100))
@@ -76,6 +77,11 @@ public final class FileMonitor: @unchecked Sendable {
             timer = nil
             closeSource()
         }
+    }
+
+    deinit {
+        timer?.cancel()
+        source?.cancel()
     }
 
     /// Compares the file's stat with the last one and reports differences.

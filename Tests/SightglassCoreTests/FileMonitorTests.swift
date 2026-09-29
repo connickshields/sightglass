@@ -76,4 +76,36 @@ struct FileMonitorTests {
         #expect(await waitUntil { events.all.filter { $0 == .tick }.count >= 5 })
         #expect(Self.changes(events).count == 1)
     }
+
+    @Test func startingTwiceStillStopsCleanly() async throws {
+        let url = try makeTempDirectory().appending(path: "status.json")
+        try url.overwrite("{}")
+        let events = Recorder<FileMonitor.Event>()
+        let monitor = FileMonitor(url: url, queue: DispatchQueue(label: "test.monitor.twice"), pollInterval: 0.05) { events.append($0) }
+        monitor.start()
+        monitor.start()
+        defer { monitor.stop() }
+        #expect(await waitUntil { events.all.filter { $0 == .tick }.count >= 3 })
+        monitor.stop()
+        try await Task.sleep(for: .milliseconds(200))
+        let countBefore = events.all.filter { $0 == .tick }.count
+        try await Task.sleep(for: .milliseconds(300))
+        let countAfter = events.all.filter { $0 == .tick }.count
+        #expect(countBefore == countAfter)
+    }
+
+    @Test func droppingTheMonitorStopsEvents() async throws {
+        let url = try makeTempDirectory().appending(path: "status.json")
+        try url.overwrite("{}")
+        let events = Recorder<FileMonitor.Event>()
+        var monitor: FileMonitor? = FileMonitor(url: url, queue: DispatchQueue(label: "test.monitor.drop"), pollInterval: 0.05) { events.append($0) }
+        monitor?.start()
+        #expect(await waitUntil { events.all.filter { $0 == .tick }.count >= 3 })
+        monitor = nil
+        try await Task.sleep(for: .milliseconds(200))
+        let countBefore = events.all.filter { $0 == .tick }.count
+        try await Task.sleep(for: .milliseconds(300))
+        let countAfter = events.all.filter { $0 == .tick }.count
+        #expect(countBefore == countAfter)
+    }
 }
