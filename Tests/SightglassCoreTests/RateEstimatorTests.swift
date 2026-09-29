@@ -44,7 +44,10 @@ struct RateEstimatorTests {
 
     @Test func onlyRecentSamplesCount() throws {
         let old = samples([(0, 0), (100, 10), (200, 20)])
-        let recent = samples((0...6).map { (300 + Double($0) * 10, 20 + Double($0) * 100) })
+        let recent = samples((0...6).map { (step: Int) -> (TimeInterval, Double) in
+            let n = Double(step)
+            return (300 + n * 10, 20 + n * 100)
+        })
         let rate = try #require(RateEstimator.rate(from: old + recent, now: t0.addingTimeInterval(360)))
         #expect(abs(rate - 10) < 1e-9)
     }
