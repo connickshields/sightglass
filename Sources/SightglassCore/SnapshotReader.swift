@@ -104,7 +104,10 @@ public final class SnapshotReader {
         try handle.seek(toOffset: offset)
         let data = try handle.read(upToCount: Int(size - offset)) ?? Data()
         offset += UInt64(data.count)
-        setSignature(data: partialLine + data)
+        // Update signature to last ≤64 bytes of signature + data (old + new bytes).
+        if !data.isEmpty {
+            setSignature(data: signature + data)
+        }
         let (lines, rest) = Self.splitLines(partialLine + data)
         partialLine = rest
         // Once a file is known to be NDJSON, bad lines are skipped.

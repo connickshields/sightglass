@@ -166,4 +166,16 @@ struct SnapshotReaderTests {
         try url.overwrite(#"{"n": 2}"#)
         #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(2), format: .document, isRestart: true)))
     }
+
+    @Test func refilledLogAfterIdleReadIsRestart() throws {
+        let (url, reader) = try setUp("events.ndjson")
+        try url.overwrite(line(1) + line(2))
+        _ = reader.read(now: t0)
+        #expect(reader.read(now: t0) == .unchanged)
+        try url.append(line(3))
+        #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(3), format: .ndjson)))
+        #expect(reader.read(now: t0) == .unchanged)
+        try url.overwrite(line(7) + line(8) + line(9) + line(10))
+        #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(10), format: .ndjson, seed: [obj(7), obj(8), obj(9)], isRestart: true)))
+    }
 }
