@@ -7,9 +7,17 @@ Each watched file gets its own menu bar item. Click it for details.
 ## Requirements
 
 - macOS 15 or later
-- Xcode 16 or later (or the matching Command Line Tools) to build
+- To build from source: Xcode 16 or later, or the matching Command Line Tools
 
 ## Install
+
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask connickshields/tap/sightglass
+```
+
+Or build from source:
 
 ```sh
 git clone https://github.com/connickshields/sightglass.git
@@ -17,7 +25,9 @@ cd sightglass
 make install            # builds and copies Sightglass.app to /Applications
 ```
 
-`make install PREFIX="$HOME/Applications"` installs somewhere else. A Homebrew tap is planned.
+`make install PREFIX="$HOME/Applications"` installs somewhere else.
+
+Builds on the [releases page](https://github.com/connickshields/sightglass/releases) are ad-hoc signed, not notarized, so macOS blocks a downloaded copy the first time you open it. Click **Open Anyway** in System Settings → Privacy & Security, or run `xattr -dr com.apple.quarantine /Applications/Sightglass.app`. The Homebrew cask removes the quarantine attribute during install.
 
 ## Use
 
@@ -73,12 +83,15 @@ make run-demo    # terminal 2: runs Sightglass watching it (uses a separate conf
 ```sh
 make test        # unit tests (swift test)
 make app         # build/Sightglass.app, ad-hoc signed
+make zip VERSION=1.2.3 ARCHS="arm64 x86_64"   # universal build/Sightglass-1.2.3.zip
 swift run Sightglass
 ```
 
 Settings live in `~/Library/Application Support/Sightglass/config.json`. Set `SIGHTGLASS_CONFIG=/path/to/config.json` to use a different file.
 
-macOS asks for permission the first time Sightglass reads files in Desktop, Documents, or Downloads. Local builds are ad-hoc signed, so macOS may ask again after each rebuild.
+macOS asks for permission the first time Sightglass reads files in Desktop, Documents, or Downloads. Every build is ad-hoc signed, releases included, so macOS may ask again after a rebuild or upgrade.
+
+To publish a release, push a version tag: `git tag v1.2.3 && git push origin v1.2.3`. The release workflow runs the tests, attaches a universal zip to a GitHub release, and updates the cask in [connickshields/homebrew-tap](https://github.com/connickshields/homebrew-tap).
 
 ## License
 
