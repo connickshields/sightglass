@@ -1,6 +1,9 @@
 import Foundation
 
 public enum RateEstimator {
+    public static let window: TimeInterval = 60
+    public static let minSamples = 3
+
     /// Least-squares rate of change, in units per second.
     ///
     /// Uses timed samples from the last `window` seconds. When fewer than
@@ -8,7 +11,7 @@ public enum RateEstimator {
     /// `minSamples` timed samples instead, as long as the newest is no older
     /// than `max(window, 2 × their average spacing)`, so a stalled job gets nil.
     /// Returns nil without enough data or when the rate isn't positive.
-    public static func rate(from samples: [Sample], now: Date, window: TimeInterval = 60, minSamples: Int = 3) -> Double? {
+    public static func rate(from samples: [Sample], now: Date, window: TimeInterval = window, minSamples: Int = minSamples) -> Double? {
         let timed = samples.compactMap { sample in sample.date.map { (time: $0, value: sample.value) } }
         var points = timed.filter { now.timeIntervalSince($0.time) <= window }
         if points.count < minSamples {

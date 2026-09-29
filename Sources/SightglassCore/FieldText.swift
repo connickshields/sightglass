@@ -2,17 +2,19 @@ import Foundation
 
 /// Text pieces shared by the menu bar and menu views.
 public enum FieldText {
-    /// `3.4/s · 12m`, `3.4/s` without an ETA, or `–/s` without a rate.
+    /// `3.4/s · 12m`, `3.4/s` without an ETA, `Measuring…` while warming up,
+    /// or `–/s` without a rate.
     public static func compactRate(_ info: RateInfo, format: ValueFormat, unit: String?, locale: Locale = .current) -> String {
-        guard let perSecond = info.perSecond else { return "–/s" }
+        guard let perSecond = info.perSecond else { return info.isMeasuring ? "Measuring…" : "–/s" }
         let rate = ValueFormatter.rate(perSecond, format: format, unit: unit, locale: locale)
         guard let eta = info.eta else { return rate }
         return "\(rate) · \(ValueFormatter.shortDuration(eta))"
     }
 
-    /// `3.4/s · 12m 03s left · finishes 3:41 PM`, or `No recent progress`.
+    /// `3.4/s · 12m 03s left · finishes 3:41 PM`, `Measuring…` while warming up,
+    /// or `No recent progress`.
     public static func expandedRate(_ info: RateInfo, format: ValueFormat, unit: String?, now: Date, locale: Locale = .current) -> String {
-        guard let perSecond = info.perSecond else { return "No recent progress" }
+        guard let perSecond = info.perSecond else { return info.isMeasuring ? "Measuring…" : "No recent progress" }
         var parts = [ValueFormatter.rate(perSecond, format: format, unit: unit, locale: locale)]
         if let eta = info.eta {
             parts.append("\(ValueFormatter.duration(eta)) left")

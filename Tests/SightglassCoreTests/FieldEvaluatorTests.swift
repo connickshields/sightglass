@@ -97,6 +97,37 @@ struct FieldEvaluatorTests {
     }
 }
 
+extension FieldEvaluatorTests {
+    func rateInfo(_ history: History) -> RateInfo? {
+        guard case .rate(let info) = evaluate("progress.downloaded", .rate(total: nil, unit: nil), history: history) else { return nil }
+        return info
+    }
+
+    @Test func rateIsMeasuringWhileWarmingUp() throws {
+        var history = History()
+        history.record(1, at: now.addingTimeInterval(-1))
+        history.record(2, at: now)
+        let info = try #require(rateInfo(history))
+        #expect(info.perSecond == nil)
+        #expect(info.isMeasuring)
+    }
+
+    @Test func stalledRateIsNotMeasuring() throws {
+        var history = History()
+        for step in 0..<3 { history.record(Double(step), at: now.addingTimeInterval(Double(step) - 120)) }
+        let info = try #require(rateInfo(history))
+        #expect(info.perSecond == nil)
+        #expect(!info.isMeasuring)
+    }
+
+    @Test func valueUnchangedSinceLongAgoIsNotMeasuring() throws {
+        var history = History()
+        history.record(5, at: now.addingTimeInterval(-120))
+        let info = try #require(rateInfo(history))
+        #expect(!info.isMeasuring)
+    }
+}
+
 struct StalenessTests {
     let t0 = Date(timeIntervalSince1970: 1_000_000)
 

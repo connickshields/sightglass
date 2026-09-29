@@ -27,4 +27,10 @@ struct FieldTextTests {
         #expect(FieldText.sparklineDetail([3, 42, 40], format: .auto, locale: en) == "min 3 · max 42 · now 40")
         #expect(FieldText.sparklineDetail([], format: .auto, locale: en) == "")
     }
+
+    @Test func measuringRate() {
+        let info = RateInfo(value: 0, perSecond: nil, total: nil, eta: nil, isMeasuring: true)
+        #expect(FieldText.compactRate(info, format: .auto, unit: nil, locale: en) == "Measuring…")
+        #expect(FieldText.expandedRate(info, format: .auto, unit: nil, now: Date(timeIntervalSince1970: 0), locale: en) == "Measuring…")
+    }
 }

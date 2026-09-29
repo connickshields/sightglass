@@ -45,12 +45,15 @@ public struct RateInfo: Equatable, Sendable {
     public var perSecond: Double?
     public var total: Double?
     public var eta: TimeInterval?
+    /// True while there are too few recent readings to estimate a rate yet.
+    public var isMeasuring: Bool
 
-    public init(value: Double, perSecond: Double?, total: Double?, eta: TimeInterval?) {
+    public init(value: Double, perSecond: Double?, total: Double?, eta: TimeInterval?, isMeasuring: Bool = false) {
         self.value = value
         self.perSecond = perSecond
         self.total = total
         self.eta = eta
+        self.isMeasuring = isMeasuring
     }
 }
 
@@ -100,7 +103,12 @@ public enum FieldEvaluator {
             let eta = perSecond.flatMap { rate in
                 total.flatMap { RateEstimator.eta(value: number, total: $0, rate: rate) }
             }
-            return .rate(RateInfo(value: number, perSecond: perSecond, total: total, eta: eta))
+            // Still warming up: few timed readings, and the first one is recent.
+            let timed = history.samples.compactMap(\.date)
+            let isMeasuring = perSecond == nil
+                && timed.count < RateEstimator.minSamples
+                && (timed.first.map { now.timeIntervalSince($0) <= RateEstimator.window } ?? true)
+            return .rate(RateInfo(value: number, perSecond: perSecond, total: total, eta: eta, isMeasuring: isMeasuring))
         }
     }
 }
