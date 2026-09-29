@@ -68,6 +68,8 @@ public final class WatchEngine: @unchecked Sendable {
     private func handle(_ event: FileMonitor.Event) {
         switch event {
         case .missing:
+            // Let the reader see the deletion so a recreated file starts fresh.
+            _ = reader.read(now: Date())
             isPending = false
             enqueue(status: hasSeenFile ? .missing : .waiting, snapshot: nil)
         case .changed(let stat):
@@ -87,7 +89,7 @@ public final class WatchEngine: @unchecked Sendable {
         case .snapshot(let snapshot):
             enqueue(status: .ok, snapshot: snapshot)
         case .unchanged:
-            enqueue(status: status, snapshot: nil)
+            enqueue(status: .ok, snapshot: nil)
         case .pending:
             enqueue(status: status == .missing ? .waiting : status, snapshot: nil)
         case .invalid(let message):

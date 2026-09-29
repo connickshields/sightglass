@@ -83,4 +83,18 @@ struct WatchEngineTests {
         #expect(WatchEngine.merge(seeded, restart) == restart)
         #expect(WatchEngine.merge(nil, next) == next)
     }
+
+    @Test func restartsHistoryWhenDocumentIsRecreated() async throws {
+        let url = try makeTempDirectory().appending(path: "s.json")
+        try url.overwrite(#"{"n": 1}"#)
+        let updates = Recorder<WatchUpdate>()
+        let engine = Self.start(url, updates: updates)
+        defer { engine.stop() }
+        #expect(await waitUntil { updates.all.last?.status == .ok })
+        try FileManager.default.removeItem(at: url)
+        #expect(await waitUntil { updates.all.last?.status == .missing })
+        try url.overwrite(#"{"n": 2}"#)
+        #expect(await waitUntil { updates.all.last?.snapshot?.value == .object(["n": .number(2)]) })
+        #expect(updates.all.last?.snapshot?.isRestart == true)
+    }
 }
