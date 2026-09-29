@@ -1,6 +1,6 @@
 # Sightglass
 
-A tiny macOS menu bar app for keeping an eye on long-running jobs. Point it at a JSON file your job keeps updating, tick the keys you care about, and watch them live in the menu bar as text, percentages, progress bars, rings, sparklines, rates with ETAs, or status badges.
+A macOS menu bar app for watching long-running jobs. Point it at a JSON file your job keeps updating, tick the keys you care about, and watch them live in the menu bar as text, percentages, progress bars, rings, sparklines, rates with ETAs, or status badges.
 
 Each watched file gets its own menu bar item. Click it for details.
 
@@ -17,7 +17,7 @@ cd sightglass
 make install            # builds and copies Sightglass.app to /Applications
 ```
 
-`make install PREFIX=~/Applications` installs somewhere else. A Homebrew tap is planned.
+`make install PREFIX="$HOME/Applications"` installs somewhere else. A Homebrew tap is planned.
 
 ## Use
 
@@ -37,7 +37,7 @@ Sightglass detects the format automatically.
 {"status": "running", "progress": {"downloaded": 420, "total": 1000}}
 ```
 
-Write it atomically if you can (write a temp file, then rename it over the old one). If you can't, that's fine too: Sightglass ignores a half-written file for up to 5 seconds.
+Write it atomically if you can (write a temp file, then rename it over the old one). Otherwise Sightglass waits up to 5 seconds for a half-written file to become valid before showing an error.
 
 **NDJSON**, one JSON object per line, appended as the job runs:
 
@@ -46,7 +46,7 @@ Write it atomically if you can (write a temp file, then rename it over the old o
 {"downloaded": 2, "total": 1000}
 ```
 
-Sightglass reads only new lines, and earlier lines fill in sparklines. If the job starts the log over, history resets.
+Sightglass reads only new lines, and earlier lines fill in sparklines. If the job starts the log over, history resets. Every line must be a JSON object or array, so keep other output (like stderr) out of the log.
 
 ### Displays
 
