@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+# One release at a time. A half-finished publish is worse than a queued one.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+
+jobs:
+  release:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      sha256: ${{ steps.build.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the build number counts commits
+
+      - name: Swift version
+        run: swift --version
+
+      - name: Test
+        run: swift test
+
+      - id: meta
+        name: Read the version from the tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "build_number=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+
+      - id: build
+        name: Build and check the universal zip
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_NUMBER: ${{ steps.meta.outputs.build_number }}
+        run: |
+          make zip VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" ARCHS="arm64 x86_64"
+          packaging/check-app.sh build/Sightglass.app "$VERSION"
+          echo "sha256=$(shasum -a 256 "build/Sightglass-$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          zip="build/Sightglass-$VERSION.zip"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            # A re-run: replace the asset so it matches this run's sha256.
+            gh release upload "$TAG" "$zip" --clobber
+          else
+            gh release create "$TAG" "$zip" --title "Sightglass $VERSION" --generate-notes --verify-tag
+          fi
+
+  tap:
+    needs: release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: source
+
+      # The tap is another repository, which GITHUB_TOKEN can't write to.
+      # TAP_DEPLOY_KEY is a deploy key with write access to that repo only.
+      - uses: actions/checkout@v7
+        with:
+          repository: connickshields/homebrew-tap
+          ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
+          path: tap
+
+      - id: render
+        name: Render and commit the cask
+        working-directory: tap
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+          SHA256: ${{ needs.release.outputs.sha256 }}
+        run: |
+          ../source/packaging/render-cask.sh "$VERSION" "$SHA256" Casks/sightglass.rb
+          git add Casks/sightglass.rb
+          # Staged, not `git diff`: on the first release the file is new.
+          if git diff --cached --quiet; then
+            echo "Cask unchanged; nothing to publish."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "sightglass $VERSION"
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Install from the local commit, so a broken cask never reaches the tap.
+      - name: Check that the cask installs
+        if: steps.render.outputs.changed == 'true'
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          brew tap connickshields/tap "$GITHUB_WORKSPACE/tap"
+          brew style connickshields/tap
+          brew install --cask connickshields/tap/sightglass
+          if xattr -p com.apple.quarantine /Applications/Sightglass.app > /dev/null 2>&1; then
+            echo "The quarantine attribute is still set after install."
+            exit 1
+          fi
+          source/packaging/check-app.sh /Applications/Sightglass.app "$VERSION"
+          brew uninstall --cask connickshields/tap/sightglass
+
+      - name: Push to the tap
+        if: steps.render.outputs.changed == 'true'
+        working-directory: tap
+        run: |
+          for attempt in 1 2 3; do
+            git push && exit 0
+            echo "Push rejected (attempt $attempt); rebasing onto the tap's latest commit."
+            git pull --rebase
+          done
+          exit 1
