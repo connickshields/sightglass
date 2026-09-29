@@ -9,10 +9,12 @@ jobs:
   build:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Swift version
         run: swift --version
       - name: Test
         run: swift test
-      - name: Build app
-        run: make app
+      - name: Build universal zip
+        run: |
+          make zip VERSION=0.0.0 ARCHS="arm64 x86_64"
+          packaging/check-app.sh build/Sightglass.app 0.0.0
