@@ -1,4 +1,5 @@
 import Foundation
+@testable import SightglassCore
 
 /// A fresh, empty temporary directory.
 func makeTempDirectory() throws -> URL {
@@ -52,4 +53,9 @@ extension URL {
     func replaceAtomically(_ string: String) throws {
         try Data(string.utf8).write(to: self, options: .atomic)
     }
+}
+
+/// Shorthand for a path literal in tests.
+func fp(_ string: String) -> FieldPath {
+    try! FieldPath(parsing: string)
 }
