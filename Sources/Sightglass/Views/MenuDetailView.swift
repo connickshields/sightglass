@@ -4,6 +4,7 @@ import SightglassCore
 /// The header and field list at the top of a watch's menu.
 struct MenuDetailView: View {
     let watch: Watch
+    var onHeightChange: (CGFloat) -> Void = { _ in }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -25,10 +26,14 @@ struct MenuDetailView: View {
             }
             if !watch.config.fields.isEmpty {
                 Divider()
-                Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 6) {
+                VStack(alignment: .leading, spacing: 10) {
                     ForEach(watch.config.fields) { field in
-                        GridRow {
-                            Text(field.title).foregroundStyle(.secondary).lineLimit(1)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(field.title)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
                             ExpandedFieldView(field: field, state: watch.fieldState(field), now: watch.now)
                         }
                     }
@@ -37,6 +42,9 @@ struct MenuDetailView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 8)
-        .frame(width: 320, alignment: .leading)
+        .frame(width: 320, alignment: .topLeading)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { onHeightChange($0) }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

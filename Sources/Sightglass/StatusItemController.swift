@@ -48,13 +48,23 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         if let detailView { detailView.frame.size = detailView.fittingSize }
     }
 
+    /// Keeps the menu's header item as tall as its content while the menu is open.
+    private func resizeDetail(toHeight height: CGFloat) {
+        guard let detailView else { return }
+        let height = ceil(height)
+        guard abs(detailView.frame.height - height) > 0.5 else { return }
+        detailView.frame.size = NSSize(width: detailView.frame.width, height: height)
+    }
+
     private func makeMenu() -> NSMenu {
         let menu = NSMenu()
         menu.autoenablesItems = false
         menu.delegate = self
 
         let detail = NSMenuItem()
-        let detailView = NSHostingView(rootView: MenuDetailView(watch: watch))
+        let detailView = NSHostingView(rootView: MenuDetailView(watch: watch) { [weak self] height in
+            self?.resizeDetail(toHeight: height)
+        })
         detailView.frame.size = detailView.fittingSize
         detail.view = detailView
         self.detailView = detailView

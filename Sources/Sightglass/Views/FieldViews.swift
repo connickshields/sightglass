@@ -65,28 +65,30 @@ struct ExpandedFieldView: View {
     var body: some View {
         switch state {
         case .text(let text):
-            Text(text)
+            Text(text).lineLimit(3).fixedSize(horizontal: false, vertical: true)
         case .progress(let info):
             HStack(spacing: 8) {
                 switch field.display {
                 case .bar:
-                    ProgressBar(fraction: info.clampedFraction).frame(width: 120, height: 8)
+                    ProgressBar(fraction: info.clampedFraction).frame(maxWidth: .infinity).frame(height: 8)
                 case .ring:
                     ProgressRing(fraction: info.clampedFraction, lineWidth: 4).frame(width: 28, height: 28)
                 default:
                     EmptyView()
                 }
-                Text(FieldText.progressDetail(info, format: field.format))
+                Text(FieldText.progressDetail(info, format: field.format)).fixedSize()
             }
         case .sparkline(let values):
             VStack(alignment: .leading, spacing: 2) {
-                Sparkline(values: values).frame(width: 160, height: 28)
+                Sparkline(values: values).frame(maxWidth: .infinity).frame(height: 28)
                 Text(FieldText.sparklineDetail(values, format: field.format))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
         case .rate(let info):
             Text(FieldText.expandedRate(info, format: field.format, unit: field.display.rateUnit, now: now))
+                .fixedSize(horizontal: false, vertical: true)
         case .badge(let rule, let raw):
             HStack(spacing: 4) {
                 Image(systemName: rule.symbol).foregroundStyle(rule.color.color)
