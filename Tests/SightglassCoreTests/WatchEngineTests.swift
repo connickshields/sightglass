@@ -97,4 +97,37 @@ struct WatchEngineTests {
         #expect(await waitUntil { updates.all.last?.snapshot?.value == .object(["n": .number(2)]) })
         #expect(updates.all.last?.snapshot?.isRestart == true)
     }
+
+    @Test func restartsHistoryWhenLogIsRecreated() async throws {
+        let url = try makeTempDirectory().appending(path: "events.ndjson")
+        try url.overwrite("{\"n\": 1}\n{\"n\": 2}\n")
+        let updates = Recorder<WatchUpdate>()
+        let engine = Self.start(url, updates: updates)
+        defer { engine.stop() }
+        #expect(await waitUntil { updates.all.last?.status == .ok })
+        try FileManager.default.removeItem(at: url)
+        #expect(await waitUntil { updates.all.last?.status == .missing })
+        try url.overwrite("{\"n\": 7}\n{\"n\": 8}\n")
+        #expect(await waitUntil {
+            guard let snapshot = updates.all.last?.snapshot, snapshot.value == .object(["n": .number(8)]) else { return false }
+            return snapshot.isRestart && snapshot.seed == [.object(["n": .number(7)])]
+        })
+    }
+
+    @Test func reportsUnreadableFileAsInvalid() async throws {
+        let directory = try makeTempDirectory()
+        let sub = directory.appending(path: "sub")
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        let url = sub.appending(path: "s.json")
+        try url.overwrite(#"{"n": 1}"#)
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: sub.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sub.path) }
+        let updates = Recorder<WatchUpdate>()
+        let engine = Self.start(url, updates: updates)
+        defer { engine.stop() }
+        #expect(await waitUntil {
+            if case .invalid(let message) = updates.all.last?.status { return message.hasPrefix("Can't read file") }
+            return false
+        })
+    }
 }

@@ -15,7 +15,7 @@ struct FieldPathTests {
         #expect(try FieldPath(parsing: #"x["back\\slash"]"#).components == [.key("x"), .key(#"back\slash"#)])
     }
 
-    @Test(arguments: ["a.b", "has space", "brack[et", #"quote""#, #"back\slash"#, "ünïcode", "", "0", "dash-and_underscore"])
+    @Test(arguments: ["a.b", "has space", "brack[et", #"quote""#, #"back\slash"#, "ünïcode", "", "0", "dash-and_underscore", "\u{301}x", "\"\u{301}"])
     func roundTripsAwkwardKeys(key: String) throws {
         let path = FieldPath([.key("outer"), .key(key), .index(3)])
         #expect(try FieldPath(parsing: path.description) == path)

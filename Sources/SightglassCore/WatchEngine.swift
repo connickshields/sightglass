@@ -25,7 +25,7 @@ public struct WatchUpdate: Equatable, Sendable {
 }
 
 /// Runs a `FileMonitor` and `SnapshotReader` on a private queue and delivers
-/// coalesced updates — at most one per `minUpdateInterval` — on `callbackQueue`.
+/// coalesced updates on `callbackQueue`, at most one per `minUpdateInterval`.
 public final class WatchEngine: @unchecked Sendable {
     private let queue: DispatchQueue
     private let callbackQueue: DispatchQueue
@@ -69,9 +69,17 @@ public final class WatchEngine: @unchecked Sendable {
         switch event {
         case .missing:
             // Let the reader see the deletion so a recreated file starts fresh.
-            _ = reader.read(now: Date())
-            isPending = false
-            enqueue(status: hasSeenFile ? .missing : .waiting, snapshot: nil)
+            let outcome = reader.read(now: Date())
+            if outcome == .missing {
+                isPending = false
+                enqueue(status: hasSeenFile ? .missing : .waiting, snapshot: nil)
+            } else {
+                hasSeenFile = true
+                apply(outcome)
+            }
+        case .unreadable:
+            // The reader reports pending, then the OS error once the grace period passes.
+            apply(reader.read(now: Date()))
         case .changed(let stat):
             hasSeenFile = true
             modified = stat.modified

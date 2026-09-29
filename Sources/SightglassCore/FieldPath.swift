@@ -46,10 +46,12 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
             case .key(let key) where Self.isPlain(key):
                 result += result.isEmpty ? key : ".\(key)"
             case .key(let key):
-                let escaped = key
-                    .replacingOccurrences(of: "\\", with: "\\\\")
-                    .replacingOccurrences(of: "\"", with: "\\\"")
-                result += "[\"\(escaped)\"]"
+                var escaped = String.UnicodeScalarView()
+                for scalar in key.unicodeScalars {
+                    if scalar == "\\" || scalar == "\"" { escaped.append("\\") }
+                    escaped.append(scalar)
+                }
+                result += "[\"\(String(escaped))\"]"
             }
         }
         return result
@@ -61,7 +63,8 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
 
     /// Parses the form produced by `description`.
     public init(parsing string: String) throws {
-        let chars = Array(string)
+        // Scalars, not Characters: a key starting with a combining mark would otherwise fuse with the preceding bracket.
+        let chars = Array(string.unicodeScalars)
         var i = 0
         var components: [Component] = []
 
@@ -69,7 +72,7 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
             let start = i
             while i < chars.count, Self.isPlain(chars[i]) { i += 1 }
             guard i > start else { throw ParseError(position: start) }
-            return String(chars[start..<i])
+            return Self.string(chars[start..<i])
         }
 
         while i < chars.count {
@@ -84,13 +87,13 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
                         switch chars[i] {
                         case "\\":
                             guard i + 1 < chars.count else { throw ParseError(position: i) }
-                            key.append(chars[i + 1])
+                            key.unicodeScalars.append(chars[i + 1])
                             i += 2
                         case "\"":
                             i += 1
                             break scan
                         default:
-                            key.append(chars[i])
+                            key.unicodeScalars.append(chars[i])
                             i += 1
                         }
                     }
@@ -99,9 +102,9 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
                     components.append(.key(key))
                 } else {
                     let start = i
-                    while i < chars.count, chars[i].isASCII, chars[i].isNumber { i += 1 }
+                    while i < chars.count, chars[i].value >= 0x30, chars[i].value <= 0x39 { i += 1 }
                     guard i > start, i < chars.count, chars[i] == "]",
-                          let index = Int(String(chars[start..<i])) else { throw ParseError(position: start) }
+                          let index = Int(Self.string(chars[start..<i])) else { throw ParseError(position: start) }
                     i += 1
                     components.append(.index(index))
                 }
@@ -117,14 +120,20 @@ public struct FieldPath: Hashable, Sendable, Comparable, CustomStringConvertible
         self.components = components
     }
 
-    private static let plainCharacters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
+    private static let plainCharacters = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-".unicodeScalars)
 
-    private static func isPlain(_ character: Character) -> Bool {
-        plainCharacters.contains(character)
+    private static func isPlain(_ scalar: Unicode.Scalar) -> Bool {
+        plainCharacters.contains(scalar)
+    }
+
+    private static func string(_ scalars: ArraySlice<Unicode.Scalar>) -> String {
+        var result = String.UnicodeScalarView()
+        result.append(contentsOf: scalars)
+        return String(result)
     }
 
     static func isPlain(_ key: String) -> Bool {
-        !key.isEmpty && key.allSatisfy(isPlain)
+        !key.isEmpty && key.unicodeScalars.allSatisfy(isPlain)
     }
 }
 

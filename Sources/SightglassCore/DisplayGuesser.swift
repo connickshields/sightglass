@@ -2,7 +2,7 @@ import Foundation
 
 /// Picks sensible defaults when the user ticks a key or changes its display.
 public enum DisplayGuesser {
-    /// The display and format for a newly ticked leaf (spec §3.5).
+    /// The display and format for a newly ticked leaf.
     public static func guess(path: FieldPath, value: JSONValue) -> (display: Display, format: ValueFormat) {
         let key = path.lastKey?.lowercased() ?? ""
         switch value {

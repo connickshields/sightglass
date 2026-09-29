@@ -108,4 +108,20 @@ struct FileMonitorTests {
         let countAfter = events.all.filter { $0 == .tick }.count
         #expect(countBefore == countAfter)
     }
+
+    @Test func reportsUnreadableInsteadOfMissing() async throws {
+        let sub = try makeTempDirectory().appending(path: "sub")
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        let url = sub.appending(path: "status.json")
+        try url.overwrite("{}")
+        try FileManager.default.setAttributes([.posixPermissions: 0], ofItemAtPath: sub.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: sub.path) }
+        let events = Recorder<FileMonitor.Event>()
+        let monitor = Self.start(url, poll: 0.05, events: events)
+        defer { monitor.stop() }
+        #expect(await waitUntil { events.all.contains(.unreadable) })
+        try await Task.sleep(for: .milliseconds(200))
+        #expect(!events.all.contains(.missing))
+        #expect(events.all.filter { $0 == .unreadable }.count == 1)
+    }
 }

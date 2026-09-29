@@ -33,12 +33,13 @@ public enum ReadOutcome: Equatable, Sendable {
     case missing
 }
 
-/// Reads a watched file, detecting whole-document JSON vs NDJSON (spec §4.2).
+/// Reads a watched file, detecting whole-document JSON vs NDJSON.
 /// Not thread-safe: use it from one queue.
 public final class SnapshotReader {
     public let url: URL
     private let seedWindow: Int
     private let grace: TimeInterval
+    private let maxDocumentSize: Int
 
     private var format: FileFormat?
     private var inode: UInt64?
@@ -48,25 +49,26 @@ public final class SnapshotReader {
     private var failingSince: Date?
     private var restartPending = false
 
-    public init(url: URL, seedWindow: Int = 256 * 1024, grace: TimeInterval = 5) {
+    public init(url: URL, seedWindow: Int = 256 * 1024, grace: TimeInterval = 5, maxDocumentSize: Int = 64 * 1024 * 1024) {
         self.url = url
         self.seedWindow = seedWindow
         self.grace = grace
+        self.maxDocumentSize = maxDocumentSize
     }
 
     public func read(now: Date = Date()) -> ReadOutcome {
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            if format != nil { restartPending = true }
-            clearPosition()
-            failingSince = nil
-            return .missing
+        let descriptor = open(url.path, O_RDONLY)
+        guard descriptor >= 0 else {
+            let code = errno
+            if code == ENOENT || code == ENOTDIR {
+                if format != nil { restartPending = true }
+                clearPosition()
+                failingSince = nil
+                return .missing
+            }
+            return fail("Can't read file: \(String(cString: strerror(code)))", now: now)
         }
-        let handle: FileHandle
-        do {
-            handle = try FileHandle(forReadingFrom: url)
-        } catch {
-            return fail("Can't read file: \(error.localizedDescription)", now: now)
-        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
         defer { try? handle.close() }
 
         var info = stat()
@@ -131,6 +133,9 @@ public final class SnapshotReader {
             try handle.seek(toOffset: 0)
         }
 
+        if size > UInt64(maxDocumentSize) {
+            return fail("File is too large to read as a JSON document", now: now)
+        }
         let data = try handle.readToEnd() ?? Data()
         do {
             let value = try JSONValue.parse(data)
@@ -145,13 +150,19 @@ public final class SnapshotReader {
 
     /// Treats `data` as NDJSON if every complete line is a JSON object or array.
     private func ndjson(_ data: Data, inode fileInode: UInt64, end: UInt64) -> ReadOutcome? {
-        let (lines, rest) = Self.splitLines(data)
-        guard !lines.isEmpty else { return nil }
+        guard let lastNewline = data.lastIndex(of: 0x0A) else { return nil }
         var values: [JSONValue] = []
-        for line in lines {
-            guard let value = Self.parseLine(line) else { return nil }
+        var lineStart = data.startIndex
+        while lineStart <= lastNewline {
+            let lineEnd = data[lineStart...].firstIndex(of: 0x0A)!
+            let line = data[lineStart..<lineEnd]
+            lineStart = lineEnd + 1
+            if line.allSatisfy({ $0 == 0x20 || $0 == 0x09 || $0 == 0x0D }) { continue }
+            guard let value = Self.parseLine(Data(line)) else { return nil }
             values.append(value)
         }
+        guard !values.isEmpty else { return nil }
+        let rest = Data(data[(lastNewline + 1)...])
         format = .ndjson
         inode = fileInode
         offset = end

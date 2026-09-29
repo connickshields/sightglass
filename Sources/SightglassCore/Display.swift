@@ -46,7 +46,7 @@ public struct BadgeRule: Codable, Hashable, Sendable {
     }
 }
 
-/// How one field is drawn (spec §3.3).
+/// How one field is drawn.
 public enum Display: Codable, Hashable, Sendable {
     case text
     case percent(source: ProgressSource)

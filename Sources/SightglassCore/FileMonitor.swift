@@ -12,28 +12,30 @@ public struct FileStat: Equatable, Sendable {
         self.modified = modified
     }
 
-    /// `stat()`s `path`; nil if it doesn't exist or can't be read.
-    public static func of(path: String) -> FileStat? {
+    /// `stat()`s `path`, or the errno explaining why that failed.
+    public static func of(path: String) -> Result<FileStat, POSIXError> {
         var info = stat()
-        guard stat(path, &info) == 0 else { return nil }
+        guard stat(path, &info) == 0 else { return .failure(POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)) }
         let mtime = info.st_mtimespec
-        return FileStat(
+        return .success(FileStat(
             inode: UInt64(info.st_ino),
             size: Int64(info.st_size),
             modified: Date(timeIntervalSince1970: TimeInterval(mtime.tv_sec) + TimeInterval(mtime.tv_nsec) / 1e9)
-        )
+        ))
     }
 }
 
 /// Watches one path with a dispatch source for quick updates plus a safety
 /// poll that catches missed events, network volumes, and files that don't
-/// exist yet (spec §4.1). Survives atomic replacement and delete/recreate.
+/// exist yet. Survives atomic replacement and delete/recreate.
 ///
 /// All state is confined to `queue`; events are delivered there.
 public final class FileMonitor: @unchecked Sendable {
     public enum Event: Equatable, Sendable {
         case changed(FileStat)
         case missing
+        /// The path exists (or might) but can't be examined, e.g. permission denied.
+        case unreadable
         /// Sent after every poll.
         case tick
     }
@@ -45,6 +47,7 @@ public final class FileMonitor: @unchecked Sendable {
 
     private var lastStat: FileStat?
     private var reportedMissing = false
+    private var reportedUnreadable = false
     private var source: DispatchSourceFileSystemObject?
     private var timer: DispatchSourceTimer?
 
@@ -86,16 +89,30 @@ public final class FileMonitor: @unchecked Sendable {
 
     /// Compares the file's stat with the last one and reports differences.
     private func check() {
-        guard let current = FileStat.of(path: path) else {
+        let current: FileStat
+        switch FileStat.of(path: path) {
+        case .success(let stat):
+            current = stat
+        case .failure(let error):
             closeSource()
             lastStat = nil
-            if !reportedMissing {
-                reportedMissing = true
-                handler(.missing)
+            if error.code == .ENOENT || error.code == .ENOTDIR {
+                reportedUnreadable = false
+                if !reportedMissing {
+                    reportedMissing = true
+                    handler(.missing)
+                }
+            } else {
+                reportedMissing = false
+                if !reportedUnreadable {
+                    reportedUnreadable = true
+                    handler(.unreadable)
+                }
             }
             return
         }
         reportedMissing = false
+        reportedUnreadable = false
         if source == nil { openSource() }
         if current != lastStat {
             lastStat = current

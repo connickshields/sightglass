@@ -178,4 +178,14 @@ struct SnapshotReaderTests {
         try url.overwrite(line(7) + line(8) + line(9) + line(10))
         #expect(reader.read(now: t0) == .snapshot(Snapshot(value: obj(10), format: .ndjson, seed: [obj(7), obj(8), obj(9)], isRestart: true)))
     }
+
+    @Test func refusesHugeNonNDJSONDocuments() throws {
+        let url = try makeTempDirectory().appending(path: "big.json")
+        let reader = SnapshotReader(url: url, seedWindow: 64, grace: 5, maxDocumentSize: 128)
+        let items = (0..<40).map { "\($0)" }.joined(separator: ", ")
+        try url.overwrite("{\"items\": [\(items)]}")
+        #expect(try FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int ?? 0 > 128)
+        #expect(reader.read(now: t0) == .pending)
+        #expect(reader.read(now: t0.addingTimeInterval(6)) == .invalid("File is too large to read as a JSON document"))
+    }
 }

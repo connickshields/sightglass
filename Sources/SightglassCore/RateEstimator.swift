@@ -6,7 +6,7 @@ public enum RateEstimator {
     /// Uses timed samples from the last `window` seconds. When fewer than
     /// `minSamples` fall inside it (a slow-updating job), it uses the last
     /// `minSamples` timed samples instead, as long as the newest is no older
-    /// than `max(window, 2 × their average spacing)` — so a stalled job gets nil.
+    /// than `max(window, 2 × their average spacing)`, so a stalled job gets nil.
     /// Returns nil without enough data or when the rate isn't positive.
     public static func rate(from samples: [Sample], now: Date, window: TimeInterval = 60, minSamples: Int = 3) -> Double? {
         let timed = samples.compactMap { sample in sample.date.map { (time: $0, value: sample.value) } }
