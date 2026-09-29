@@ -7,6 +7,7 @@ final class WatchManager {
     private let store: ConfigStore
     private(set) var watches: [Watch] = []
     private var items: [UUID: StatusItemController] = [:]
+    private var windows: [UUID: ConfigureWindowController] = [:]
     private var placeholder: PlaceholderItemController?
     private var notice: String?
     private var clock: Timer?
@@ -37,9 +38,18 @@ final class WatchManager {
         panel.allowsMultipleSelection = false
         panel.message = "Choose a JSON or NDJSON file to watch"
         guard panel.runModal() == .OK, let url = panel.url else { return }
-        insert(WatchConfig(path: url.path))
+        let watch = insert(WatchConfig(path: url.path))
         save()
         refreshPlaceholder()
+        configure(watch)
+    }
+
+    func configure(_ watch: Watch) {
+        let controller = windows[watch.id] ?? ConfigureWindowController(watch: watch) { [weak self] in
+            self?.windows[watch.id] = nil
+        }
+        windows[watch.id] = controller
+        controller.show()
     }
 
     func reveal(_ watch: Watch) {
@@ -54,6 +64,8 @@ final class WatchManager {
         watch.stop()
         items[watch.id]?.removeFromMenuBar()
         items[watch.id] = nil
+        windows[watch.id]?.close()
+        windows[watch.id] = nil
         watches.removeAll { $0.id == watch.id }
         save()
         refreshPlaceholder()
@@ -71,6 +83,7 @@ final class WatchManager {
 
     private var actions: StatusItemActions {
         StatusItemActions(
+            configure: { [weak self] in self?.configure($0) },
             reveal: { [weak self] in self?.reveal($0) },
             remove: { [weak self] in self?.remove($0) },
             addFile: { [weak self] in self?.addFile() }

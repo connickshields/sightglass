@@ -3,6 +3,7 @@ import SwiftUI
 import SightglassCore
 
 struct StatusItemActions {
+    var configure: (Watch) -> Void
     var reveal: (Watch) -> Void
     var remove: (Watch) -> Void
     var addFile: () -> Void
@@ -60,6 +61,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         menu.addItem(detail)
 
         menu.addItem(.separator())
+        menu.addItem(item("Configure…", #selector(configureWatch), key: ","))
         menu.addItem(item("Reveal in Finder", #selector(revealWatch)))
         menu.addItem(item("Remove", #selector(removeWatch)))
         menu.addItem(.separator())
@@ -76,6 +78,7 @@ final class StatusItemController: NSObject, NSMenuDelegate {
         return item
     }
 
+    @objc private func configureWatch() { actions.configure(watch) }
     @objc private func revealWatch() { actions.reveal(watch) }
     @objc private func removeWatch() { actions.remove(watch) }
     @objc private func addFile() { actions.addFile() }
