@@ -92,7 +92,7 @@ Settings live in `~/Library/Application Support/Sightglass/config.json`. Set `SI
 
 macOS asks for permission the first time Sightglass reads files in Desktop, Documents, or Downloads. Every build is ad-hoc signed, releases included, so macOS may ask again after a rebuild or upgrade.
 
-To publish a release, push a version tag: `git tag v1.2.3 && git push origin v1.2.3`. The release workflow runs the tests, attaches a universal zip to a GitHub release, and updates the cask in [connickshields/homebrew-tap](https://github.com/connickshields/homebrew-tap).
+To publish a release, push a version tag: `git tag v1.2.3 && git push origin v1.2.3`. The release workflow runs the tests, attaches a universal zip to a GitHub release, and updates the cask in [connickshields/homebrew-tap](https://github.com/connickshields/homebrew-tap). Published releases and their tags can't be changed, so fix a bad release by tagging a new version.
 
 ## License
 
