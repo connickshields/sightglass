@@ -1,8 +1,6 @@
-<img src="docs/images/icon.png" width="128" height="128" alt="Sightglass app icon">
+![Sightglass: watch long-running jobs from the macOS menu bar. The app icon, a mint sparkline rising across a glass pane on charcoal, sits beside the name.](docs/images/social-preview.png)
 
-# Sightglass
-
-A macOS menu bar app for watching long-running jobs. Point it at a JSON file your job keeps updating, tick the keys you care about, and watch them live in the menu bar as text, percentages, progress bars, rings, sparklines, rates with ETAs, or status badges.
+Point Sightglass at a JSON file your job keeps updating, tick the keys you care about, and watch them live in the menu bar as text, percentages, progress bars, rings, sparklines, rates with ETAs, or status badges.
 
 Each watched file gets its own menu bar item. Click it for details.
 
