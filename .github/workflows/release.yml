@@ -21,14 +21,15 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 30
     permissions:
-      contents: write
+      contents: write # to create the release
     outputs:
       version: ${{ steps.meta.outputs.version }}
-      sha256: ${{ steps.build.outputs.sha256 }}
+      sha256: ${{ steps.publish.outputs.sha256 }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0 # the build number counts commits
+          persist-credentials: false
 
       - name: Swift version
         run: swift --version
@@ -44,42 +45,44 @@ jobs:
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
           echo "build_number=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
 
-      - id: build
-        name: Build and check the universal zip
+      - name: Build and check the universal zip
         env:
           VERSION: ${{ steps.meta.outputs.version }}
           BUILD_NUMBER: ${{ steps.meta.outputs.build_number }}
         run: |
           make zip VERSION="$VERSION" BUILD_NUMBER="$BUILD_NUMBER" ARCHS="arm64 x86_64"
           packaging/check-app.sh build/Sightglass.app "$VERSION"
-          echo "sha256=$(shasum -a 256 "build/Sightglass-$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
-      - name: Publish the GitHub release
+      - id: publish
+        name: Publish the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
-          zip="build/Sightglass-$VERSION.zip"
-          if gh release view "$TAG" > /dev/null 2>&1; then
-            # A re-run: replace the asset so it matches this run's sha256.
-            gh release upload "$TAG" "$zip" --clobber
-          else
-            gh release create "$TAG" "$zip" --title "Sightglass $VERSION" --generate-notes --verify-tag
+          # Releases are immutable once published. A re-run keeps the zip that's
+          # already there, so the cask gets the sha256 of the published copy.
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            gh release create "$TAG" "build/Sightglass-$VERSION.zip" --title "Sightglass $VERSION" --generate-notes --verify-tag
           fi
+          gh release download "$TAG" --pattern "Sightglass-$VERSION.zip" --dir build/published
+          echo "sha256=$(shasum -a 256 "build/published/Sightglass-$VERSION.zip" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
 
   tap:
     needs: release
     runs-on: macos-latest
     timeout-minutes: 30
+    # Holds TAP_DEPLOY_KEY. Only v* tags can use this environment.
+    environment: release
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: source
+          persist-credentials: false
 
       # The tap is another repository, which GITHUB_TOKEN can't write to.
       # TAP_DEPLOY_KEY is a deploy key with write access to that repo only.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: connickshields/homebrew-tap
           ssh-key: ${{ secrets.TAP_DEPLOY_KEY }}
