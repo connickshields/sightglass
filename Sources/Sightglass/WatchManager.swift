@@ -32,12 +32,8 @@ final class WatchManager {
 
     func addFile() {
         NSApp.activate()
-        let panel = NSOpenPanel()
-        panel.canChooseFiles = true
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        panel.message = "Choose a JSON or NDJSON file to watch"
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard let url = FileChooser.choose() else { return }
+        FileChooser.checkAccess(to: url)
         let watch = insert(WatchConfig(path: url.path))
         save()
         refreshPlaceholder()
