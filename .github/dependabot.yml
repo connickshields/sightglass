@@ -1,0 +1,10 @@
+version: 2
+updates:
+  # Workflows pin actions to commit SHAs. This keeps the pins current.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # Skip releases younger than a week, so a compromised one has time to be caught.
+    cooldown:
+      default-days: 7
