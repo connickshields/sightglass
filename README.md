@@ -1,3 +1,5 @@
+<img src="docs/images/icon.png" width="128" height="128" alt="Sightglass app icon">
+
 # Sightglass
 
 A macOS menu bar app for watching long-running jobs. Point it at a JSON file your job keeps updating, tick the keys you care about, and watch them live in the menu bar as text, percentages, progress bars, rings, sparklines, rates with ETAs, or status badges.
@@ -84,6 +86,7 @@ make run-demo    # terminal 2: runs Sightglass watching it (uses a separate conf
 make test        # unit tests (swift test)
 make app         # build/Sightglass.app, ad-hoc signed
 make zip VERSION=1.2.3 ARCHS="arm64 x86_64"   # universal build/Sightglass-1.2.3.zip
+make icon        # regenerate the app icon and docs/images/ from Support/AppIcon.svg
 swift run Sightglass
 ```
 

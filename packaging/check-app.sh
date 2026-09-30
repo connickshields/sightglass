@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks a release build of Sightglass.app: universal, validly signed, and
-# stamped with the expected version.
+# Checks a release build of Sightglass.app: universal, validly signed, has its
+# icon, and is stamped with the expected version.
 #
 # Usage: packaging/check-app.sh APP VERSION
 set -euo pipefail
@@ -18,6 +18,7 @@ fail() {
 }
 
 [ -d "$app" ] || fail "$app not found"
+[ -f "$app/Contents/Resources/AppIcon.icns" ] || fail "AppIcon.icns missing"
 archs=$(lipo -archs "$app/Contents/MacOS/Sightglass")
 for arch in arm64 x86_64; do
     case " $archs " in

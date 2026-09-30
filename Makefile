@@ -21,7 +21,7 @@ $(error usage: make zip VERSION=x.y.z [BUILD_NUMBER=n] [ARCHS="arm64 x86_64"])
 endif
 endif
 
-.PHONY: build test app zip run install demo run-demo clean
+.PHONY: build test app zip icon run install demo run-demo clean
 
 build:
 	$(SWIFT_BUILD) --product $(APP_NAME)
@@ -35,9 +35,14 @@ app: build
 	mkdir -p "$(APP)/Contents/MacOS" "$(APP)/Contents/Resources"
 	cp "$$($(SWIFT_BUILD) --show-bin-path)/$(APP_NAME)" "$(APP)/Contents/MacOS/$(APP_NAME)"
 	cp Support/Info.plist "$(APP)/Contents/Info.plist"
+	cp Support/AppIcon.icns "$(APP)/Contents/Resources/AppIcon.icns"
 	$(if $(VERSION),plutil -replace CFBundleShortVersionString -string "$(VERSION)" "$(APP)/Contents/Info.plist")
 	$(if $(BUILD_NUMBER),plutil -replace CFBundleVersion -string "$(BUILD_NUMBER)" "$(APP)/Contents/Info.plist")
 	codesign --force --sign - "$(APP)"
+
+# Regenerates Support/AppIcon.icns and docs/images/ from Support/AppIcon.svg.
+icon:
+	swift scripts/make-icon.swift
 
 zip: app
 	rm -f "$(ZIP)"

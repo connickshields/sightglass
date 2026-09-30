@@ -8,6 +8,8 @@
 	<string>Sightglass</string>
 	<key>CFBundleExecutable</key>
 	<string>Sightglass</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>io.github.connickshields.sightglass</string>
 	<key>CFBundleInfoDictionaryVersion</key>
