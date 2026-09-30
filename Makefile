@@ -5,11 +5,13 @@ APP := $(BUILD_DIR)/$(APP_NAME).app
 PREFIX ?= /Applications
 DEMO_DIR := $(BUILD_DIR)/demo
 
-# Release builds set these. Left empty, the app keeps Support/Info.plist's
-# version and build number, and builds for this Mac's architecture only.
-VERSION ?=
-BUILD_NUMBER ?=
-ARCHS ?=
+# Release builds set these on the command line. Left empty, the app keeps
+# Support/Info.plist's version and build number, and builds for this Mac's
+# architecture only. `:=` ignores same-named environment variables, such as
+# the BUILD_NUMBER that CI systems export.
+VERSION :=
+BUILD_NUMBER :=
+ARCHS :=
 SWIFT_BUILD := swift build -c $(CONFIG) $(foreach arch,$(ARCHS),--arch $(arch))
 ZIP := $(BUILD_DIR)/$(APP_NAME)-$(VERSION).zip
 

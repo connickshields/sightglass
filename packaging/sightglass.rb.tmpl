@@ -19,14 +19,16 @@ cask "sightglass" do
 
   app "Sightglass.app"
 
-  # Sightglass is ad-hoc signed, not notarized. Gatekeeper won't open a
-  # quarantined app without a Developer ID signature, and it fails silently:
-  # the app just never opens. Removing the attribute lets it launch.
+  # Sightglass is ad-hoc signed, not notarized, so Gatekeeper refuses to open
+  # a quarantined copy. Removing the attribute lets it launch.
   postflight_steps do
     run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{appdir}}/Sightglass.app"]
   end
 
   uninstall quit: "io.github.connickshields.sightglass"
 
-  zap trash: "~/Library/Application Support/Sightglass"
+  zap trash: [
+    "~/Library/Application Support/Sightglass",
+    "~/Library/Preferences/io.github.connickshields.sightglass.plist",
+  ]
 end

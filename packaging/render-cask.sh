@@ -21,6 +21,16 @@ if ! [[ $sha256 =~ ^[0-9a-f]{64}$ ]]; then
     exit 1
 fi
 
+# Never move a cask backwards, e.g. when an older tag's release is re-run.
+if [ -f "$output" ]; then
+    current=$(sed -n 's/^  version "\(.*\)"$/\1/p' "$output")
+    if [ -n "$current" ] && [ "$current" != "$version" ] &&
+        [ "$(printf '%s\n%s\n' "$current" "$version" | sort -V | tail -n 1)" = "$current" ]; then
+        echo "render-cask: $output already has $current, newer than $version; leaving it unchanged" >&2
+        exit 0
+    fi
+fi
+
 template="$(dirname "$0")/sightglass.rb.tmpl"
 mkdir -p "$(dirname "$output")"
 sed -e "s/@VERSION@/$version/g" -e "s/@SHA256@/$sha256/g" "$template" > "$output"
