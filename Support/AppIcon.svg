@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#262c3d"/>
+      <stop offset="1" stop-color="#0f1219"/>
+    </linearGradient>
+    <linearGradient id="pane" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.10"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.0"/>
+    </linearGradient>
+    <linearGradient id="area" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5ce6c8" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#5ce6c8" stop-opacity="0.0"/>
+    </linearGradient>
+    <filter id="glow" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="26"/></filter>
+  </defs>
+
+  <!-- body -->
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#body)"/>
+
+  <!-- glass pane -->
+  <rect x="212" y="232" width="600" height="560" rx="48" fill="url(#pane)"/>
+  <rect x="212" y="232" width="600" height="160" rx="48" fill="url(#sheen)"/>
+  <rect x="212" y="232" width="600" height="560" rx="48" fill="none" stroke="#ffffff" stroke-opacity="0.28" stroke-width="8"/>
+
+  <!-- level lines -->
+  <g stroke="#ffffff" stroke-opacity="0.16" stroke-width="8" stroke-linecap="round">
+    <path d="M252 372 H772"/>
+    <path d="M252 512 H772"/>
+    <path d="M252 652 H772"/>
+  </g>
+
+  <!-- area under the trace -->
+  <path d="M268 650 L376 556 L466 600 L576 446 L658 492 L738 334 L738 760 L268 760 Z" fill="url(#area)"/>
+
+  <!-- trace -->
+  <path d="M268 650 L376 556 L466 600 L576 446 L658 492 L738 334" fill="none" stroke="#5ce6c8" stroke-width="64" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- live point -->
+  <circle cx="738" cy="334" r="84" fill="#5ce6c8" opacity="0.6" filter="url(#glow)"/>
+  <circle cx="738" cy="334" r="54" fill="#ffffff"/>
+</svg>
